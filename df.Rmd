@@ -80,7 +80,7 @@ n_em_entities <- n_em %>% filter(!Entity %in% c(
     "European Union (27)", "Asia (excl. China and India)", 
     "Europe (excl. EU-27)", "Europe (excl. EU-28)", 
     "European Union (28)", "Least developed countries (Jones et al. 2023)", 
-    "North America (excl. USA)", "OECD (Jones et al. 2023)"))
+    "North America (excl. USA)", "OECD (Jones et al. 2023)", "World"))
 
 ```
 
