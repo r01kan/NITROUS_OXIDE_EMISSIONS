@@ -180,5 +180,6 @@ ylim(0, 5000)
 
 p2
 
-```
+```{r}
 Forest_area <- Land_Use_Change_and_Forestry
+
