@@ -181,3 +181,4 @@ ylim(0, 5000)
 p2
 
 ```
+Forest area <- Land Use Change and Forestry
