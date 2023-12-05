@@ -180,6 +180,7 @@ ylim(0, 5000)
 
 p2
 
+```{r}
 
 Some data sets still didn't match the entities of nitrous oxide emissions.
 The code below matches every data set to the nitroux oxide emissions data set, each data set now has 201 observations.
