@@ -180,6 +180,29 @@ ylim(0, 5000)
 
 p2
 
-```{r}
-Forest_area <- Land_Use_Change_and_Forestry
 
+Some data sets still didn't match the entities of nitrous oxide emissions.
+The code below matches every data set to the nitroux oxide emissions data set, each data set now has 201 observations.
+
+```{r}
+entities_df <- data.frame(Entity = unique(n_em_entities$Entity))
+adjust_dataset <- function(df, entities_df) {
++     # Perform a left join
++     adjusted_df <- left_join(entities_df, df, by = "Entity")
++     return(adjusted_df)
++ }
+> 
+> adjusted_agr_land <- adjust_dataset(agr_land, entities_df)
+> adjusted_ann_growth_exp <- adjust_dataset(ann_growth_exp, entities_df)
+> adjusted_ann_growth_imp <- adjust_dataset(ann_growth_imp, entities_df)
+> adjusted_forest_area <- adjust_dataset(forest_area, entities_df)
+> adjusted_gdp_per_cap <- adjust_dataset(gdp_per_cap, entities_df)
+> adjusted_meat_supp_per_cap <- adjust_dataset(meat_supp_per_cap, entities_df)
+> adjusted_n_em <- adjust_dataset(n_em, entities_df)
+> adjusted_n_em_per_cap <- adjust_dataset(n_em_per_cap, entities_df)
+> adjusted_n_em_per_sec <- adjust_dataset(n_em_per_sec, entities_df)
+> adjusted_pop_den <- adjust_dataset(pop_den, entities_df)
+> adjusted_urban_v_rural <- adjust_dataset(urban_v_rural, entities_df)
+> adjusted_water_resc <- adjust_dataset(water_resc, entities_df)
+> adjusted_wetlands <- adjust_dataset(wetlands, entities_df)
+```{r}
