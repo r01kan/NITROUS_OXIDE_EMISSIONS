@@ -207,3 +207,23 @@ adjust_dataset <- function(df, entities_df) {
 > adjusted_water_resc <- adjust_dataset(water_resc, entities_df)
 > adjusted_wetlands <- adjust_dataset(wetlands, entities_df)
 ```{r}
+
+Changing names of datasets
+
+```{r}
+total_agricultural_land <- adjusted_agr_land
+annual_exports_growth <- adjusted_ann_growth_exp
+annual_imports_growth <- adjusted_ann_growth_imp
+total_forest_area <- adjusted_forest_area
+gdp_per_capita <- adjusted_gdp_per_cap
+meat_supply_per_capita <- adjusted_meat_supp_per_cap
+nitrous_oxide_emissions_CO2equivilent <- adjusted_n_em
+nitrous_oxide_emissions_CO2eq <- nitrous_oxide_emissions_CO2equivilent
+rm(nitrous_oxide_emissions_CO2equivilent)
+per_capita_nitrous_oxide_emissions_CO2eq <- adjusted_n_em_per_cap
+per_capita_nitrous_oxide_emissions_CO2eq_per_sector <- adjusted_n_em_per_sec
+population_density <- adjusted_pop_den
+urban_vs_rural <- adjusted_urban_v_rural
+renewable_freshwater <- adjusted_water_resc
+wetland_area_shares <- adjusted_wetlands
+```{r}
