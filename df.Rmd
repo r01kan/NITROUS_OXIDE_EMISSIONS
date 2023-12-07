@@ -182,48 +182,116 @@ p2
 
 ```{r}
 
-Some data sets still didn't match the entities of nitrous oxide emissions.
-The code below matches every data set to the nitroux oxide emissions data set, each data set now has 201 observations.
+# Using logarithmic normalization to spread out data nitrous oxide emissions data and fix the graphs.
 
 ```{r}
-entities_df <- data.frame(Entity = unique(n_em_entities$Entity))
-adjust_dataset <- function(df, entities_df) {
-+     # Perform a left join
-+     adjusted_df <- left_join(entities_df, df, by = "Entity")
-+     return(adjusted_df)
-+ }
-> 
-> adjusted_agr_land <- adjust_dataset(agr_land, entities_df)
-> adjusted_ann_growth_exp <- adjust_dataset(ann_growth_exp, entities_df)
-> adjusted_ann_growth_imp <- adjust_dataset(ann_growth_imp, entities_df)
-> adjusted_forest_area <- adjust_dataset(forest_area, entities_df)
-> adjusted_gdp_per_cap <- adjust_dataset(gdp_per_cap, entities_df)
-> adjusted_meat_supp_per_cap <- adjust_dataset(meat_supp_per_cap, entities_df)
-> adjusted_n_em <- adjust_dataset(n_em, entities_df)
-> adjusted_n_em_per_cap <- adjust_dataset(n_em_per_cap, entities_df)
-> adjusted_n_em_per_sec <- adjust_dataset(n_em_per_sec, entities_df)
-> adjusted_pop_den <- adjust_dataset(pop_den, entities_df)
-> adjusted_urban_v_rural <- adjust_dataset(urban_v_rural, entities_df)
-> adjusted_water_resc <- adjust_dataset(water_resc, entities_df)
-> adjusted_wetlands <- adjust_dataset(wetlands, entities_df)
-```{r}
+df_normalized <- df_new
+df_normalized$`Annual nitrous oxide emissions in CO₂ equivalents` <- as.numeric(as.character(df_normalized$`Annual nitrous oxide emissions in CO₂ equivalents`))
+df_normalized$normalized_emissions <- log(df_normalized$`Annual nitrous oxide emissions in CO₂ equivalents`)
 
-Changing names of datasets
+```
+
+# Now, we plot all variables with nitrous oxide emissions in an attempt to detect possible trends
+
+# Nitrous oxide emissions vs Renewable freshwater resources
 
 ```{r}
-total_agricultural_land <- adjusted_agr_land
-annual_exports_growth <- adjusted_ann_growth_exp
-annual_imports_growth <- adjusted_ann_growth_imp
-total_forest_area <- adjusted_forest_area
-gdp_per_capita <- adjusted_gdp_per_cap
-meat_supply_per_capita <- adjusted_meat_supp_per_cap
-nitrous_oxide_emissions_CO2equivilent <- adjusted_n_em
-nitrous_oxide_emissions_CO2eq <- nitrous_oxide_emissions_CO2equivilent
-rm(nitrous_oxide_emissions_CO2equivilent)
-per_capita_nitrous_oxide_emissions_CO2eq <- adjusted_n_em_per_cap
-per_capita_nitrous_oxide_emissions_CO2eq_per_sector <- adjusted_n_em_per_sec
-population_density <- adjusted_pop_den
-urban_vs_rural <- adjusted_urban_v_rural
-renewable_freshwater <- adjusted_water_resc
-wetland_area_shares <- adjusted_wetlands
+N2OvsFreshwater <- ggplot(data = df_normalized, aes(
+  x = `normalized_emissions`,
+   y = `Renewable internal freshwater resources per capita (cubic meters)`
+)) +
+geom_point() + 
+ylim(0, 5000)
+print(N2OvsFreshwater)
+
+```
+
+# Nitrous oxide emissions vs Wetlands area
+
 ```{r}
+
+N2OvsWetlands <- ggplot(data = df_normalized, aes(
+  x = `normalized_emissions`,
+  y = `6.6.1 - Wetlands area (% of total land area) - EN_WBE_WTLP`)) +
+  geom_point() +
+  ylim(0, 65)
+
+print(N2OvsWetlands)
+
+```
+
+# We have to filter out outliers in order to obtain readable data.
+
+Firstly, we must calculate the IQR for wetlands area:
+
+```{r}
+Q1 <- quantile(df_normalized$`6.6.1 - Wetlands area (% of total land area) - EN_WBE_WTLP`, 0.25, na.rm = TRUE)
+Q3 <- quantile(df_normalized$`6.6.1 - Wetlands area (% of total land area) - EN_WBE_WTLP`, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+```
+
+Then, we define the lower and upper bounds
+
+```{r}
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+```
+
+Then, we filter out the outliers
+
+```{r}
+df_filtered <- df_normalized %>%
+  filter(`6.6.1 - Wetlands area (% of total land area) - EN_WBE_WTLP` >= lower_bound & 
+         `6.6.1 - Wetlands area (% of total land area) - EN_WBE_WTLP` <= upper_bound)
+```
+
+Finally, we can obtain readable plots:
+
+```{r}
+N2OvsWetlands <- ggplot(df_filtered, aes(x = normalized_emissions, y = `6.6.1 - Wetlands area (% of total land area) - EN_WBE_WTLP`)) +
+  geom_point()
+print(N2OvsWetlands)
+```
+
+From now on, removing outliers will be a standard procedure for each plot.
+
+# Nitrous Oxide emissions vs Rural population %
+
+```{r}
+Q1_rural <- quantile(df_normalized$`Rural population (%) long-run with 2050 projections (OWID)`, 0.25, na.rm = TRUE)
+Q3_rural <- quantile(df_normalized$`Rural population (%) long-run with 2050 projections (OWID)`, 0.75, na.rm = TRUE)
+IQR_rural <- Q3_rural - Q1_rural
+
+lower_bound_rural <- Q1_rural - 1.5 * IQR_rural
+upper_bound_rural <- Q3_rural + 1.5 * IQR_rural
+
+df_filtered <- df_normalized %>%
+  filter(`Rural population (%) long-run with 2050 projections (OWID)` >= lower_bound_rural & 
+         `Rural population (%) long-run with 2050 projections (OWID)` <= upper_bound_rural)
+
+N2OvsRural <- ggplot(df_filtered, aes(x = normalized_emissions, y = `Rural population (%) long-run with 2050 projections (OWID)`)) +
+  geom_point() 
+
+print(N2OvsRural)
+```
+
+# N2O vs Urban population %
+
+```{r}
+
+Q1_urban <- quantile(df_normalized$`Urban population (%) long-run with 2050 projections (OWID)`, 0.25, na.rm = TRUE)
+Q3_urban <- quantile(df_normalized$`Urban population (%) long-run with 2050 projections (OWID)`, 0.75, na.rm = TRUE)
+IQR_urban <- Q3_urban - Q1_urban
+
+lower_bound_urban <- Q1_urban - 1.5 * IQR_urban
+upper_bound_urban <- Q3_urban + 1.5 * IQR_urban
+
+f_filtered <- df_normalized %>%
+  filter(`Urban population (%) long-run with 2050 projections (OWID)` >= lower_bound_urban & 
+         `Urban population (%) long-run with 2050 projections (OWID)` <= upper_bound_urban)
+
+N2OvsUrban <- ggplot(df_filtered, aes(x = normalized_emissions, y = `Urban population (%) long-run with 2050 projections (OWID)`)) +
+  geom_point()
+
+print(N2OvsUrban)
+```
