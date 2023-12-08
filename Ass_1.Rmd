@@ -1,0 +1,412 @@
+---
+title: "Assignment 1 : Linear Regression"
+output: html_document
+date: "2023-11-29"
+---
+
+
+Importing packages
+```{r, message = FALSE, warning=FALSE}
+library(dplyr)
+library(readr)
+library(knitr)
+library(kableExtra)
+library(DT)
+library(ggplot2)
+library(ggmice)
+```
+Reading in the datasets
+```{r, message = FALSE}
+n_em <- read_csv("data/nitrous-oxide-emissions.csv", show_col_types = FALSE) %>%
+  filter(Year == 2020)
+
+#n_em_per_cap <- read_csv("data/per-capita-nitrous-oxide.csv") %>%
+  #filter(Year == 2020)
+#n_em_per_cap
+
+n_em_per_sec <- read_csv("data/per-capita-nitrous-oxide-sector.csv") %>%
+  filter(Year == 2020)%>% 
+  select(-Year,- Code)
+pop_den <- read_csv("data/population-density.csv")%>%
+  filter(Year == 2020) %>% 
+  select(-Year,- Code)
+forest_area <- read_csv("data/population-density.csv")%>%
+  filter(Year == 2020)%>% 
+  select(-Year,- Code)
+gdp_per_cap <- read_csv("data/gdp-per-capita-worldbank.csv")%>%
+  filter(Year == 2020)%>% 
+  select(-Year,- Code)
+#meat_supp_per_cap <- read_csv("data/meat-supply-per-person.csv")%>%
+ # filter(Year == 2020)%>% 
+  #select(-Year,- Code)
+n_fert_app_per_hect <- read_csv("data/nit_fert_app.csv")%>%
+  filter(Year == 2020)%>% 
+  select(-Year,- Code)
+agr_land <- read_csv ("data/agricultural-land.csv")%>%
+  filter(Year == 2020)%>% 
+  select(-Year,- Code)
+ann_export <- read_csv("data/exports-of-goods-and-services-constant-2010-us.csv")%>%
+  filter(Year == 2020)%>% 
+  select(-Year,- Code)
+ann_import <- read_csv("data/imports-of-goods-and-services-constant-2010-us.csv")%>%
+  filter(Year == 2020)%>% 
+  select(-Year,- Code)
+urban_v_rural <- read_csv("data/urban-vs-rural-majority.csv")%>%
+  filter(Year == 2020)%>% 
+  select(-Year,- Code)
+water_resc <- read_csv("data/renewable-water-resources-per-capita.csv")%>%
+  filter(Year == 2019)%>% 
+  select(-Year,- Code)
+wetlands <- read_csv("data/coverage-of-wetlands.csv")%>%
+   filter(Year == 2017)%>% 
+  select(-Year,- Code)
+```
+
+Merging the datasets
+```{r, message = FALSE}
+df <- n_em %>%
+  left_join(pop_den, by = "Entity") %>%
+  left_join(n_em_per_sec, by = "Entity")%>%
+  left_join(forest_area, by = "Entity")%>%
+  left_join(gdp_per_cap, by = "Entity") %>%
+  left_join(n_fert_app_per_hect, by = "Entity") %>%
+  left_join(agr_land, by = "Entity")%>%
+  left_join(ann_export, by = "Entity") %>%
+  left_join(ann_import, by = "Entity")%>%
+  left_join(urban_v_rural, by = "Entity")%>%
+  left_join(water_resc, by = "Entity")%>%
+  left_join(wetlands, by = "Entity")%>%
+  select(-"Population density.x", - "Year")
+
+```
+
+Entities Filter 
+```{r, message = FALSE, results='hide'}
+
+df %>% filter(!Entity %in% c(
+    "Africa", "America", "North America", "South America", "Asia", "Europe", "Oceania",
+    "High-income countries","Upper-middle-income countries", "Low-income countries", "Lower-middle-income countries",
+    "European Union (27)", "Asia (excl. China and India)", 
+    "Europe (excl. EU-27)", "Europe (excl. EU-28)", 
+    "European Union (28)", "Least developed countries (Jones et al. 2023)", 
+    "North America (excl. USA)", "OECD (Jones et al. 2023)", "World"))
+df
+
+```
+Renaming some columns 
+```{r}
+colnames(df)[1:17] <- c("Country", 
+                        "Code",
+                        "Annual N20 Emmissions ( Co2 Equiv.)" , 
+                        "Agriculture Waste Emissions", 
+                        "Waste Emissions", 
+                        "Land Use Change and Forestry Emissions", 
+                        "Energy Production Emissions", 
+                        "Population Density", 
+                        "GDP per Capita", 
+                        "Nutrient nitrogen use per area of cropland",
+                        "Agricultural Land Use",
+                        "Exports of Goods and Services", 
+                        "Imports of Goods and Services", 
+                        "Urban Population %",
+                        "Rural Population %",
+                        "Freshwater Resources per Capita", 
+                        "Wetlands area")
+
+
+```
+Creating a categorical column based on the predominant nitrogen emission sector 
+```{r}
+df %>% 
+  mutate("Highest Emission Sector" = case_when(
+    "Agriculture Waste Emissions" >
+      "Waste Emissions" & "Agriculture Waste Emissions" > 
+      "Land Use Change and Forestry Emissions" & "Agriculture Waste Emissions" > 
+      "Energy Production Emissions" ~ 
+      "Agriculture Waste",
+    "Waste Emissions" > 
+      "Agriculture Waste Emissions" & "Waste Emissions" > 
+      "Land Use Change and Forestry" & "Waste Emissions" > 
+      "Energy Production Emissions" ~ 
+      "Waste Emissions",
+    "Land Use Change and Forestry Emissions" > 
+      "Agriculture Waste Emissions" & "Land Use Change and Forestry Emissions" > 
+      "Waste Emissions" & "Land Use Change and Forestry Emissions" > 
+      `Energy Production Emissions` ~ 
+      "Land Use Change and Forestry",
+    `Energy Production Emissions` > 
+      "Agriculture Waste Emissions" & "Energy Production Emissions" > 
+      "Land Use Change and Forestry Emissions" & "Energy Production Emissions" > 
+      "Waste Emissions" ~ 
+      "Energy Production",
+    TRUE ~ NA_character_
+  ))
+```
+
+Creating a binary variable depending on whether the majority of population lives in urban or rural areas
+```{r}
+df %>%
+  mutate("Majority Population( Urban/Agricultural" = case_when(
+    "Urban Population %" > "Rural Population %" ~ "Urban",
+    "Rural Population %" > "Urban Population %" ~ "Rural"
+  ))
+```
+Removing rows with missing values 
+```{r}
+#df <- na.omit(df)
+#df
+
+```
+
+```{r}
+df
+```
+
+Applying normalization to some variables to facilitate easier interpretation through plotting 
+
+```{r}
+#Annual N20 Emmissions
+df_normalized <- df
+df_normalized$"Annual N20 Emmissions ( Co2 Equiv.)" <- as.numeric(as.character(df_normalized$"Annual N20 Emmissions ( Co2 Equiv.)"))
+df_normalized$"Annual N20 Emmissions ( Co2 Equiv.)" <- log(df_normalized$"Annual N20 Emmissions ( Co2 Equiv.)")
+
+#Land Use and Forestry (min_max)
+
+#min_max_normalize <- function(x){(x - min(x)/max(x) - min(x))}
+#df_normalized$`Land Use Change and Forestry Emissions` <- min_max_normalize(df_normalized$`Land Use Change and Forestry Emissions`)
+#df_normalized$`Land Use Change and Forestry Emissions` <- as.numeric(df_normalized$`Land Use Change and Forestry Emissions`)
+#df_normalized$`Land Use Change and Forestry Emissions ` <- log(df_normalized$`Land Use Change and Forestry Emissions`)
+
+# Agricultural Land Use 
+df_normalized$`Agricultural Land Use` <- log(df_normalized$`Agricultural Land Use`)
+df_normalized$`Exports of Goods and Services` <- log(df_normalized$`Exports of Goods and Services`)
+df_normalized$`Imports of Goods and Services` <- log(df_normalized$`Imports of Goods and Services`)
+df_normalized$`Freshwater Resources per Capita` <- log(df_normalized$`Freshwater Resources per Capita`)
+```
+
+
+# Now, we plot all variables with nitrous oxide emissions in an attempt to detect possible trends
+
+# Nitrous oxide emissions vs Renewable freshwater resources
+
+```{r}
+N2OvsFreshwater <- ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+   y = `Freshwater Resources per Capita`
+)) +
+geom_point() + 
+ylim(0, max(df_normalized$`Freshwater Resources per Capita`))
+print(N2OvsFreshwater)
+
+```
+
+# Nitrous oxide emissions vs Wetlands area
+
+```{r}
+
+N2OvsWetlands <- ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y = `Wetlands area`)) +
+  geom_point() +
+  ylim(0, 65)
+
+print(N2OvsWetlands)
+
+```
+
+# We have to filter out outliers in order to obtain readable data.
+
+Firstly, we must calculate the IQR for wetlands area:
+
+```{r}
+Q1 <- quantile(df_normalized$`Wetlands area`, 0.25, na.rm = TRUE)
+Q3 <- quantile(df_normalized$`Wetlands area`, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+```
+
+Then, we define the lower and upper bounds
+
+```{r}
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+```
+
+Then, we filter out the outliers
+
+```{r}
+df_filtered <- df_normalized %>%
+  filter(`Wetlands area` >= lower_bound & 
+         `Wetlands area` <= upper_bound)
+```
+
+Finally, we can obtain readable plots:
+
+```{r}
+N2OvsWetlands <- ggplot(df_filtered, aes(x = `Annual N20 Emmissions ( Co2 Equiv.)`, y = `Wetlands area`)) +
+  geom_point()
+print(N2OvsWetlands)
+```
+
+From now on, removing outliers will be a standard procedure for each plot.
+
+# Nitrous Oxide emissions vs Rural population %
+
+```{r}
+Q1_rural <- quantile(df_normalized$`Rural Population %`, 0.25, na.rm = TRUE)
+Q3_rural <- quantile(df_normalized$`Rural Population %`, 0.75, na.rm = TRUE)
+IQR_rural <- Q3_rural - Q1_rural
+
+lower_bound_rural <- Q1_rural - 1.5 * IQR_rural
+upper_bound_rural <- Q3_rural + 1.5 * IQR_rural
+
+df_filtered <- df_normalized %>%
+  filter(`Rural Population %` >= lower_bound_rural & 
+         `Rural Population %` <= upper_bound_rural)
+
+N2OvsRural <- ggplot(df_filtered, aes(x = `Annual N20 Emmissions ( Co2 Equiv.)`, y = `Rural Population %`)) +
+  geom_point() 
+
+print(N2OvsRural)
+```
+
+# N2O vs Urban population %
+
+```{r}
+
+Q1_urban <- quantile(df_normalized$`Urban Population %`, 0.25, na.rm = TRUE)
+Q3_urban <- quantile(df_normalized$`Urban Population %`, 0.75, na.rm = TRUE)
+IQR_urban <- Q3_urban - Q1_urban
+
+lower_bound_urban <- Q1_urban - 1.5 * IQR_urban
+upper_bound_urban <- Q3_urban + 1.5 * IQR_urban
+
+df_filtered <- df_normalized %>%
+  filter(`Urban Population %` >= lower_bound_urban & 
+         `Urban Population %` <= upper_bound_urban)
+
+N2OvsUrban <- ggplot(df_filtered, aes(x = `Annual N20 Emmissions ( Co2 Equiv.)`, y = `Urban Population %`)) +
+  geom_point()
+
+print(N2OvsUrban)
+```
+
+```{r}
+
+df_normalized
+```
+Lets look at the relationships between N20 Emmissions and other variables 
+```{r}
+names(df_normalized)
+# Agricultural Waste Emmissions 
+
+N2vsAgriWaste <-
+  ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y = `Agriculture Waste Emissions`)) +
+  geom_point() +
+  ylim(0, 5
+       )
+  
+N2vsAgriWaste 
+
+#Waste Emmissions
+
+N2vsWasteEm <-
+  ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y =  `Waste Emissions`)) +
+  geom_point() +
+  ylim(0, 1
+       )
+N2vsWasteEm
+
+#Land Use Change and Forestry Emissions 
+  
+N2vsUseForest <-
+  ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y = `Land Use Change and Forestry Emissions`)) +
+  geom_point() +
+  ylim(0, 0.05
+       )
+N2vsUseForest
+
+#Energy Production Emmissions 
+
+N2vsEnergy <-
+  ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y = `Energy Production Emissions`)) +
+  geom_point() +
+  ylim(0, 0.025
+       )
+N2vsEnergy
+
+#Population Density 
+
+N20vsPopDen <- 
+   ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y = `Population Density`)) +
+  geom_point() +
+  ylim(0, 750
+       )
+
+N20vsPopDen
+
+#GDP per Capita 
+
+N20vsGDP <- 
+  ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y = `GDP per Capita`)) +
+  geom_point() +
+  ylim(0, 750
+       )
+#Nutrient Nitrogen Use 
+
+N20vsNutrient <- 
+  ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y = `Nutrient nitrogen use per area of cropland`)) +
+  geom_point() +
+  ylim(0, max(df_normalized$`Nutrient nitrogen use per area of cropland`)
+  )
+
+N20vsNutrient
+
+#Agricultural Land Use
+
+N20vsAgriLand <- 
+  ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y = `Agricultural Land Use`)) +
+  geom_point() +
+  ylim(0, max(df_normalized$`Agricultural Land Use`)
+  )
+
+N20vsAgriLand
+
+#Export
+N20vsExports <- 
+  ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y = `Exports of Goods and Services`)) +
+  geom_point() +
+  ylim(0, max(df_normalized$`Exports of Goods and Services`)
+  )
+
+N20vsExports
+
+#Imports
+N20vsImports <- 
+  ggplot(data = df_normalized, aes(
+  x = `Annual N20 Emmissions ( Co2 Equiv.)`,
+  y = `Imports of Goods and Services`)) +
+  geom_point() +
+  ylim(0, max(df_normalized$`Imports of Goods and Services`)
+  ) +
+  xlim(0, max(df_normalized$`Annual N20 Emmissions ( Co2 Equiv.)`))
+
+N20vsImports
+```
